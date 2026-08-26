@@ -1,0 +1,17 @@
+import type { Metadata } from 'next';
+import './globals.css';
+
+export const metadata: Metadata = {
+  title: 'BharatSentinel — AI-Native Cybersecurity',
+  description: 'AI Agents. Human Control. Continuous Security.',
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body className="min-h-screen bg-[#0a0e1a] text-[#e2e8f0]">
+        {children}
+      </body>
+    </html>
+  );
+}
