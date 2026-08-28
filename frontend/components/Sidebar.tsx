@@ -57,6 +57,21 @@ const navItems = [
   },
 ];
 
+// Divider between primary nav and utility nav
+const utilityItems = [
+  {
+    href: '/settings',
+    label: 'Settings',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.4"/>
+        <path d="M8 1.5v1.2M8 13.3v1.2M1.5 8h1.2M13.3 8h1.2M3.3 3.3l.85.85M11.85 11.85l.85.85M3.3 12.7l.85-.85M11.85 4.15l.85-.85"
+          stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+];
+
 // BharatSentinel brand mark — shield with AI-node motif
 function BrandMark({ size = 36 }: { size?: number }) {
   return (
@@ -119,9 +134,30 @@ export default function Sidebar() {
         <p className="bs-nav-section-label">Navigation</p>
       </div>
 
-      {/* Navigation */}
+      {/* Primary Navigation */}
       <nav className="flex-1 px-3 pb-4 space-y-0.5">
         {navItems.map(({ href, label, icon }) => {
+          const active = pathname === href || pathname.startsWith(href + '/');
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={clsx('bs-nav-item', active ? 'bs-nav-item-active' : 'bs-nav-item-inactive')}
+            >
+              <span className={clsx('bs-nav-icon', active ? 'text-blue-400' : 'text-[#4a5f7a]')}>
+                {icon}
+              </span>
+              <span>{label}</span>
+              {active && <span className="bs-nav-active-pip" />}
+            </Link>
+          );
+        })}
+
+        {/* Utility section */}
+        <div className="pt-4 pb-1">
+          <p className="bs-nav-section-label px-3">System</p>
+        </div>
+        {utilityItems.map(({ href, label, icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/');
           return (
             <Link

@@ -3,6 +3,10 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
 const nextConfig = {
   reactStrictMode: true,
+  // Expose WS URL to browser (no default needed — useWebSocket derives it from window.location)
+  env: {
+    NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL || '',
+  },
   async rewrites() {
     return [
       {

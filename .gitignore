@@ -50,3 +50,5 @@ yarn-error.log*
 *.crt
 *.p12
 secrets/
+
+uvicorn.log

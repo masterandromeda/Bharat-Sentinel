@@ -273,3 +273,100 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #1a2540; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+
+/* ── Event state badges ─────────────────────────────────────── */
+.es-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.es-RECEIVED       { background: rgba(71,85,105,0.18); color:#94a3b8; border:1px solid rgba(71,85,105,0.3); }
+.es-ANALYZING      { background: rgba(37,99,235,0.15); color:#60a5fa; border:1px solid rgba(37,99,235,0.3); }
+.es-INVESTIGATING  { background: rgba(124,58,237,0.15); color:#a78bfa; border:1px solid rgba(124,58,237,0.3); }
+.es-RISK_ASSESSMENT{ background: rgba(217,119,6,0.15); color:#fcd34d; border:1px solid rgba(217,119,6,0.3); }
+.es-INCIDENT_CREATED{ background: rgba(5,150,105,0.15); color:#6ee7b7; border:1px solid rgba(5,150,105,0.3); }
+.es-COMPLETED      { background: rgba(5,150,105,0.15); color:#34d399; border:1px solid rgba(5,150,105,0.3); }
+.es-ERROR          { background: rgba(220,38,38,0.15); color:#fca5a5; border:1px solid rgba(220,38,38,0.3); }
+
+/* ── Pulse dot for ANALYZING state ─────────────────────────── */
+.es-dot-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.es-ANALYZING .es-dot-pulse      { background: #60a5fa; animation: bs-pulse 1.4s ease-in-out infinite; }
+.es-INVESTIGATING .es-dot-pulse  { background: #a78bfa; animation: bs-pulse 1.4s ease-in-out infinite; }
+.es-RISK_ASSESSMENT .es-dot-pulse{ background: #fcd34d; animation: bs-pulse 1.4s ease-in-out infinite; }
+.es-RECEIVED .es-dot-pulse       { background: #94a3b8; }
+.es-INCIDENT_CREATED .es-dot-pulse { background: #6ee7b7; }
+.es-COMPLETED .es-dot-pulse      { background: #34d399; }
+.es-ERROR .es-dot-pulse          { background: #fca5a5; }
+
+@keyframes bs-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.75); }
+}
+
+/* ── Slide-in animation for new event feed items ────────────── */
+@keyframes bs-slide-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.bs-event-row-new {
+  animation: bs-slide-in 0.25s ease-out both;
+}
+
+/* ── SOC stat metric value ───────────────────────────────────── */
+.bs-metric-value {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: #e2e8f0;
+}
+
+/* ── WS connection badge ─────────────────────────────────────── */
+.bs-ws-connected {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #34d399;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.bs-ws-disconnected {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ── System status row ───────────────────────────────────────── */
+.bs-sys-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(30,45,74,0.5);
+  font-size: 12px;
+}
+.bs-sys-row:last-child { border-bottom: none; }
+.bs-sys-label { color: #4a5f7a; }
+.bs-sys-val-ok   { color: #34d399; font-weight: 600; }
+.bs-sys-val-warn { color: #fcd34d; font-weight: 600; }
+.bs-sys-val-err  { color: #fca5a5; font-weight: 600; }
+.bs-sys-val-info { color: #60a5fa; font-weight: 600; }
