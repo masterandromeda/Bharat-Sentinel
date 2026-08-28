@@ -97,7 +97,10 @@ def analyze_event(request: AnalyzeRequest):
     event_dict = request.event.model_dump()
     if not event_dict.get("timestamp"):
         event_dict["timestamp"] = datetime.utcnow().isoformat()
-    incident = orchestrator.run_pipeline(event_dict)
+    try:
+        incident = orchestrator.run_pipeline(event_dict)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     return incident
 
 
@@ -163,9 +166,11 @@ def agents_status():
 @app.post("/api/demo/run", tags=["Demo"])
 def run_demo():
     """Run the built-in demo scenario: Suspicious Login Detected."""
-    # Stamp a fresh timestamp on every run
     event = {**_DEMO_EVENT_TEMPLATE, "timestamp": datetime.utcnow().isoformat()}
-    incident = orchestrator.run_pipeline(event)
+    try:
+        incident = orchestrator.run_pipeline(event)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     return {
         "message": "Demo incident created successfully",
         "incident": incident,

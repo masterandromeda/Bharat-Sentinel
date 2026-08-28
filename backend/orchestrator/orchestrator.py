@@ -16,27 +16,29 @@ def _now() -> str:
 def run_pipeline(event: dict) -> dict:
     """
     Full agent pipeline:
-    1. Threat Detection
-    2. Investigation
-    3. Risk Assessment
+    1. Threat Detection  (Azure OpenAI)
+    2. Investigation     (Azure OpenAI)
+    3. Risk Assessment   (Azure OpenAI)
     4. Persist incident to SQLite
     5. Push to Notion (if configured)
-    Returns the created incident record.
+
+    Raises RuntimeError if Azure OpenAI credentials are missing or any
+    agent call fails — callers must convert this to an HTTP error.
     """
     incident_id = str(uuid.uuid4())
     now = _now()
 
     # --- Step 1: Threat Detection ---
     logger.info(f"[{incident_id}] Running threat detection...")
-    threat = threat_agent.run(event)
+    threat = threat_agent.run(event)          # raises RuntimeError on failure
 
     # --- Step 2: Investigation ---
     logger.info(f"[{incident_id}] Running investigation...")
-    investigation = investigation_agent.run(event, threat)
+    investigation = investigation_agent.run(event, threat)   # raises on failure
 
     # --- Step 3: Risk Assessment ---
     logger.info(f"[{incident_id}] Running risk assessment...")
-    risk = risk_agent.run(threat, investigation)
+    risk = risk_agent.run(threat, investigation)              # raises on failure
 
     # --- Step 4: Persist to SQLite ---
     incident = {

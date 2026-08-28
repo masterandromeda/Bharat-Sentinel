@@ -4,29 +4,54 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Load .env file if present — must happen before any credential reads.
+# python-dotenv is already in requirements.txt.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(override=False)  # don't override real env vars already set
+except ImportError:
+    pass  # python-dotenv not installed; rely on real environment variables
+
 try:
     from openai import AzureOpenAI, OpenAI
     OPENAI_AVAILABLE = True
 except ImportError:
     OPENAI_AVAILABLE = False
 
-# Module-level client cache — keyed by the credential values in use.
-# Rebuilt automatically if environment variables change between requests.
+# Module-level client cache keyed by credential tuple.
+# Rebuilt automatically whenever credentials change.
 _client_cache: dict = {}
+
+
+def _credentials() -> tuple[str, str, str, str]:
+    """Read all AI credentials fresh from the environment each call."""
+    return (
+        os.getenv("AZURE_OPENAI_KEY",      "").strip(),
+        os.getenv("AZURE_OPENAI_ENDPOINT", "").strip(),
+        os.getenv("AZURE_OPENAI_DEPLOYMENT","").strip(),
+        os.getenv("OPENAI_API_KEY",        "").strip(),
+    )
+
+
+def llm_mode() -> str:
+    """Return a human-readable label for the current AI backend."""
+    azure_key, azure_endpoint, _, openai_key = _credentials()
+    if azure_key and azure_endpoint:
+        return "azure-openai"
+    if openai_key:
+        return "openai"
+    return "rule-based"
 
 
 def _get_client():
     """
-    Return a configured OpenAI/AzureOpenAI client, or None if no credentials
-    are set. Reads environment variables fresh on every call so that a .env
-    file loaded after startup is respected.
+    Build and cache an OpenAI SDK client for the configured provider.
+    Returns None when no credentials are available.
     """
     if not OPENAI_AVAILABLE:
         return None
 
-    azure_key      = os.getenv("AZURE_OPENAI_KEY", "").strip()
-    azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "").strip()
-    openai_key     = os.getenv("OPENAI_API_KEY", "").strip()
+    azure_key, azure_endpoint, _, openai_key = _credentials()
 
     if azure_key and azure_endpoint:
         cache_key = ("azure", azure_key, azure_endpoint)
@@ -49,49 +74,53 @@ def _get_client():
     return None
 
 
-def llm_mode() -> str:
-    """Return a human-readable description of the current AI backend."""
-    azure_key  = os.getenv("AZURE_OPENAI_KEY", "").strip()
-    openai_key = os.getenv("OPENAI_API_KEY", "").strip()
-    if azure_key:
-        return "azure-openai"
-    if openai_key:
-        return "openai"
-    return "rule-based"
-
-
-def call_llm(system_prompt: str, user_prompt: str, fallback: dict) -> dict:
+def call_llm(system_prompt: str, user_prompt: str) -> dict:
     """
-    Call the configured LLM and parse JSON response.
-    Returns fallback (rule-based result) if no LLM is configured.
-    Never raises — always returns a valid dict.
+    Call the configured LLM (Azure OpenAI or OpenAI) and return parsed JSON.
+
+    Raises RuntimeError when:
+    - No credentials are configured
+    - The SDK is not installed
+    - The API call fails
+    - The response is not valid JSON
+
+    Callers are responsible for handling the error.
     """
+    if not OPENAI_AVAILABLE:
+        raise RuntimeError(
+            "openai SDK is not installed. Run: pip install openai"
+        )
+
     client = _get_client()
     if client is None:
-        logger.info("No LLM credentials configured — using rule-based analysis.")
-        return fallback
-
-    azure_key    = os.getenv("AZURE_OPENAI_KEY", "").strip()
-    deployment   = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4").strip() or "gpt-4"
-    model        = deployment if azure_key else "gpt-4o-mini"
-
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": user_prompt},
-            ],
-            temperature=0.2,
-            response_format={"type": "json_object"},
+        raise RuntimeError(
+            "Azure OpenAI credentials not configured. "
+            "Set AZURE_OPENAI_KEY and AZURE_OPENAI_ENDPOINT environment variables "
+            "(or OPENAI_API_KEY for OpenAI)."
         )
-        content = response.choices[0].message.content
-        result = json.loads(content)
-        logger.info(f"LLM ({model}) returned valid JSON.")
-        return result
+
+    azure_key, _, deployment, _ = _credentials()
+    model = (deployment or "gpt-4") if azure_key else "gpt-4o-mini"
+
+    logger.info(f"Calling LLM: backend={llm_mode()}  model={model}")
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": user_prompt},
+        ],
+        temperature=0.2,
+        response_format={"type": "json_object"},
+    )
+
+    raw = response.choices[0].message.content
+    try:
+        result = json.loads(raw)
     except json.JSONDecodeError as e:
-        logger.warning(f"LLM returned non-JSON response: {e}. Using rule-based fallback.")
-        return fallback
-    except Exception as e:
-        logger.warning(f"LLM call failed ({type(e).__name__}: {e}). Using rule-based fallback.")
-        return fallback
+        raise RuntimeError(
+            f"LLM returned non-JSON content. JSONDecodeError: {e}\nRaw response: {raw[:300]}"
+        ) from e
+
+    logger.info(f"LLM ({model}) returned valid JSON with keys: {list(result.keys())}")
+    return result
