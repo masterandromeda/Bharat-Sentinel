@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-const api = axios.create({ baseURL: API_URL, timeout: 30000 });
+// With Next.js rewrites configured, all /api/* calls are proxied to the backend.
+// This works in both dev (npm run dev) and production (npm start).
+const api = axios.create({ baseURL: '', timeout: 30000 });
 
 export interface Incident {
   id: string;

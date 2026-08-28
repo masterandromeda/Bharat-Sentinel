@@ -18,7 +18,7 @@ export default function DashboardPage() {
       setIncidents(incRes.data);
       setAgents(agRes.data);
     } catch {
-      setError('Cannot connect to backend. Make sure the API is running on port 8000.');
+      setError('Cannot connect to backend. Make sure the API server is running.');
     } finally {
       setLoading(false);
     }
@@ -63,6 +63,7 @@ export default function DashboardPage() {
           value={`${securityScore}/100`}
           subtitle={securityScore >= 70 ? 'Good posture' : 'Needs attention'}
           accent={securityScore >= 70 ? 'text-green-400' : 'text-yellow-400'}
+          accentBar={securityScore >= 70 ? 'green' : 'yellow'}
           icon="◎"
         />
         <StatCard
@@ -70,6 +71,7 @@ export default function DashboardPage() {
           value={active}
           subtitle="Awaiting approval"
           accent="text-blue-400"
+          accentBar="blue"
           icon="⚡"
         />
         <StatCard
@@ -77,6 +79,7 @@ export default function DashboardPage() {
           value={critical}
           subtitle="Immediate action required"
           accent="text-red-400"
+          accentBar="red"
           icon="🔴"
         />
         <StatCard
@@ -84,6 +87,7 @@ export default function DashboardPage() {
           value={pending}
           subtitle="Human review needed"
           accent="text-yellow-400"
+          accentBar="yellow"
           icon="⏳"
         />
       </div>
