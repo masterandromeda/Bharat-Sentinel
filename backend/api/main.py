@@ -12,6 +12,7 @@ from backend.models.incident import (
 )
 from backend.orchestrator import orchestrator
 from backend.services.incident_service import generate_report
+from backend.services.ai_service import llm_mode
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,7 +20,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-DEMO_EVENT = {
+# Demo event is built fresh on each /api/demo/run call (see run_demo below)
+_DEMO_EVENT_TEMPLATE = {
     "event_type": "suspicious_login",
     "description": (
         "Multiple failed login attempts detected for admin account. "
@@ -30,9 +32,8 @@ DEMO_EVENT = {
     "source_ip": "203.0.113.42",
     "target_user": "admin@bharatsentinel.in",
     "location": "Unknown — Eastern Europe",
-    "timestamp": datetime.utcnow().isoformat(),
+    "failed_attempts": 15,
     "additional_context": {
-        "failed_attempts": 15,
         "time_window_minutes": 3,
         "normal_login_location": "Mumbai, India",
         "account_type": "administrator",
@@ -126,37 +127,34 @@ def reject_incident(incident_id: str, request: ApprovalRequest):
 
 @app.get("/api/agents/status", tags=["Agents"])
 def agents_status():
-    import os
-    has_llm = bool(
-        os.getenv("AZURE_OPENAI_KEY") or os.getenv("OPENAI_API_KEY")
-    )
+    mode = llm_mode()
     has_notion = bool(
-        os.getenv("NOTION_API_KEY") and os.getenv("NOTION_DATABASE_ID")
+        os.getenv("NOTION_API_KEY", "").strip() and
+        os.getenv("NOTION_DATABASE_ID", "").strip()
     )
     return {
         "agents": [
             {
                 "name": "Threat Detection Agent",
                 "status": "active",
-                "mode": "llm" if has_llm else "rule-based",
-                "description": "Detects and classifies security threats",
+                "mode": mode,
+                "description": "Classifies incoming security events by threat type, severity, and confidence",
             },
             {
                 "name": "Investigation Agent",
                 "status": "active",
-                "mode": "llm" if has_llm else "rule-based",
-                "description": "Investigates threats and identifies root cause",
+                "mode": mode,
+                "description": "Identifies root cause, evidence, and attack pattern from threat data",
             },
             {
                 "name": "Risk Assessment Agent",
                 "status": "active",
-                "mode": "llm" if has_llm else "rule-based",
-                "description": "Assesses risk score and business impact",
+                "mode": mode,
+                "description": "Calculates risk score, business impact, and remediation recommendation",
             },
         ],
         "notion_integration": "connected" if has_notion else "mock-mode",
-        "llm_backend": "azure-openai" if os.getenv("AZURE_OPENAI_KEY") else
-                       ("openai" if os.getenv("OPENAI_API_KEY") else "rule-based"),
+        "llm_backend": mode,
     }
 
 
@@ -165,7 +163,9 @@ def agents_status():
 @app.post("/api/demo/run", tags=["Demo"])
 def run_demo():
     """Run the built-in demo scenario: Suspicious Login Detected."""
-    incident = orchestrator.run_pipeline(DEMO_EVENT)
+    # Stamp a fresh timestamp on every run
+    event = {**_DEMO_EVENT_TEMPLATE, "timestamp": datetime.utcnow().isoformat()}
+    incident = orchestrator.run_pipeline(event)
     return {
         "message": "Demo incident created successfully",
         "incident": incident,

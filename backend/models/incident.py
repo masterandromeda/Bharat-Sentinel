@@ -1,16 +1,41 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
+from pydantic import BaseModel, Field, model_validator
+from typing import Optional, List, Any
 from datetime import datetime
 
 
 class SecurityEvent(BaseModel):
     event_type: str = Field(..., description="Type of security event")
-    description: str = Field(..., description="Event description")
+    description: Optional[str] = Field(None, description="Event description")
     source_ip: Optional[str] = None
     target_user: Optional[str] = None
+    # Accept "user" as an alias for target_user (common in real event payloads)
+    user: Optional[str] = None
     location: Optional[str] = None
     timestamp: Optional[str] = None
+    failed_attempts: Optional[int] = None
     additional_context: Optional[dict] = None
+
+    @model_validator(mode="after")
+    def _normalise(self) -> "SecurityEvent":
+        # Promote "user" to target_user if target_user not set
+        if self.user and not self.target_user:
+            self.target_user = self.user
+        # Build a description from structured fields when none is provided
+        if not self.description:
+            parts = [f"Security event type: {self.event_type}"]
+            if self.target_user:
+                parts.append(f"targeted account: {self.target_user}")
+            if self.source_ip:
+                parts.append(f"source IP: {self.source_ip}")
+            if self.location:
+                parts.append(f"location: {self.location}")
+            if self.failed_attempts is not None:
+                parts.append(f"failed attempts: {self.failed_attempts}")
+            if self.additional_context:
+                for k, v in self.additional_context.items():
+                    parts.append(f"{k}: {v}")
+            self.description = "; ".join(parts)
+        return self
 
 
 class ThreatDetectionResult(BaseModel):
