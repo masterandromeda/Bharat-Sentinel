@@ -1,69 +1,59 @@
 'use client';
 import Sidebar from '@/components/Sidebar';
-import { usePathname } from 'next/navigation';
-import { useWebSocket } from '@/lib/useWebSocket';
-import { useMonitoring } from '@/lib/useMonitoring';
-
-function SOCHeader() {
-  const pathname = usePathname();
-  const { connected } = useWebSocket();
-  const { backendOnline, status } = useMonitoring();
-
-  const isOnDashboard = pathname === '/dashboard' || pathname === '/';
-
-  return (
-    <div className="soc-header">
-      {/* Left: SOC Title */}
-      <div>
-        <div className="soc-header-title">Security Operations Center</div>
-        <div className="soc-header-sub">AI-Powered · Real-time · 24/7 Monitoring</div>
-      </div>
-
-      <div className="soc-header-divider" />
-
-      {/* Status pills */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className={`soc-status-pill ${backendOnline ? 'soc-status-pill-online' : 'soc-status-pill-offline'}`}>
-          <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />
-          {backendOnline ? 'API Online' : 'API Offline'}
-        </span>
-        <span className={`soc-status-pill ${connected ? 'soc-status-pill-live' : 'soc-status-pill-warn'}`}>
-          <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />
-          {connected ? 'WS Live' : 'WS Off'}
-        </span>
-        {status && (
-          <span style={{ fontSize: 10, color: '#3d5575', fontFamily: 'monospace' }}>
-            Uptime: {status.uptime}
-          </span>
-        )}
-      </div>
-
-      {/* Right: actions */}
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-        {isOnDashboard && (
-          <span style={{ fontSize: 10, color: '#2d4060', letterSpacing: '0.04em' }}>
-            SOC Level 3+ Operations
-          </span>
-        )}
-        {/* Shield icon */}
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" style={{ opacity: 0.35 }}>
-          <path d="M11 2L3 5.5v6c0 4.4 3.4 8.5 8 9.5c4.6-1 8-5.1 8-9.5v-6L11 2Z"
-            stroke="#06b6d4" strokeWidth="1.2" fill="none"/>
-        </svg>
-      </div>
-    </div>
-  );
-}
+import LiveHeader from '@/components/LiveHeader';
+import CyberBackground from '@/components/CyberBackground';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', position: 'relative' }}>
+      {/* Animated cybersecurity background — behind everything */}
+      <CyberBackground />
+
+      {/* Sidebar — fixed, above background */}
       <Sidebar />
-      <div style={{ flex: 1, marginLeft: 220, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <SOCHeader />
-        <main style={{ flex: 1, padding: '20px 24px', overflowY: 'auto' }}>
+
+      {/* Main content area */}
+      <div style={{
+        flex: 1,
+        marginLeft: 220,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
+        position: 'relative',
+        zIndex: 1,
+      }}>
+        {/* Live top header */}
+        <LiveHeader />
+
+        {/* Page content */}
+        <main style={{ flex: 1, padding: '16px 20px', overflowY: 'auto' }}>
           {children}
         </main>
+
+        {/* SOC footer strip */}
+        <div style={{
+          height: 32,
+          background: 'rgba(4,7,18,0.95)',
+          borderTop: '1px solid rgba(30,50,90,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 24px',
+          flexShrink: 0,
+          zIndex: 10,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {['All systems monitored', 'All threats detected', 'All attacks investigated'].map(t => (
+              <span key={t} style={{ fontSize: 9.5, color: '#1a2840', letterSpacing: '0.04em' }}>• {t}</span>
+            ))}
+          </div>
+          <span style={{ fontSize: 10, color: '#2d4060', letterSpacing: '0.06em' }}>
+            SOC Level 3+ Operations
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ display: 'inline', marginLeft: 5, verticalAlign: 'middle', opacity: 0.4 }}>
+              <path d="M7 1L2 3.5v4c0 2.7 2.1 5.2 5 5.9C9.9 12.7 12 10.2 12 7.5v-4L7 1Z" stroke="#06b6d4" strokeWidth="1"/>
+            </svg>
+          </span>
+        </div>
       </div>
     </div>
   );

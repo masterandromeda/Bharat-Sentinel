@@ -748,12 +748,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Footer strip */}
-      <div style={{ marginTop: 12, padding: '8px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-        {['All systems monitored', 'All threats detected', 'All attacks investigated'].map(t => (
-          <span key={t} style={{ fontSize: 9.5, color: '#1a2840', letterSpacing: '0.04em' }}>• {t}</span>
-        ))}
-      </div>
     </div>
   );
 }
