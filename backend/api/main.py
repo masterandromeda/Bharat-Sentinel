@@ -1,18 +1,22 @@
 import os
+import asyncio
 import logging
 from datetime import datetime
+from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from pydantic import BaseModel, Field
 
 from backend.database.database import init_db
 from backend.models.incident import (
-    AnalyzeRequest, ApprovalRequest, ReportRequest, IncidentResponse
+    AnalyzeRequest, ApprovalRequest, ReportRequest,
 )
 from backend.orchestrator import orchestrator
 from backend.services.incident_service import generate_report
 from backend.services.ai_service import llm_mode
+from backend.services import monitoring as mon
 
 logging.basicConfig(
     level=logging.INFO,
@@ -20,7 +24,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Demo event is built fresh on each /api/demo/run call (see run_demo below)
+# ── Demo event template ────────────────────────────────────────────────────────
 _DEMO_EVENT_TEMPLATE = {
     "event_type": "suspicious_login",
     "description": (
@@ -41,11 +45,25 @@ _DEMO_EVENT_TEMPLATE = {
 }
 
 
+# ── Lifespan: init DB + start monitoring worker ────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     logger.info("BharatSentinel backend started. DB initialized.")
+
+    # Start the background monitoring worker
+    worker_task = asyncio.create_task(mon.monitoring_worker())
+    logger.info("[Monitor] Background worker started.")
+
     yield
+
+    # Graceful shutdown
+    worker_task.cancel()
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        pass
+    logger.info("[Monitor] Background worker stopped.")
 
 
 app = FastAPI(
@@ -64,8 +82,29 @@ app.add_middleware(
 )
 
 
-# ── Health ────────────────────────────────────────────────────────────────────
+# ── Pydantic models for new endpoints ─────────────────────────────────────────
+class IncomingEvent(BaseModel):
+    """
+    A raw security event from any connected source.
+    Designed to be source-agnostic: servers, apps, firewalls, SIEM platforms.
+    """
+    timestamp:   Optional[str] = None
+    source:      str           = Field("unknown", description="Source system identifier")
+    event_type:  str           = Field(..., description="Event category")
+    source_ip:   Optional[str] = None
+    destination: Optional[str] = None
+    username:    Optional[str] = None
+    message:     Optional[str] = None
+    failed_attempts: Optional[int] = None
+    location:    Optional[str] = None
+    additional_context: Optional[dict] = None
 
+
+class GenerateTestEventsRequest(BaseModel):
+    count: int = Field(1, ge=1, le=10, description="Number of test events to generate (1-10)")
+
+
+# ── Health ─────────────────────────────────────────────────────────────────────
 @app.get("/health", tags=["Health"])
 def health():
     return {
@@ -76,8 +115,97 @@ def health():
     }
 
 
-# ── Incidents ─────────────────────────────────────────────────────────────────
+# ── Monitoring ─────────────────────────────────────────────────────────────────
+@app.get("/api/monitoring/status", tags=["Monitoring"])
+def monitoring_status():
+    """
+    Real runtime monitoring state.
+    Counters reflect actual events received and processed this session.
+    events_received / events_processed are from in-process counters (reset on restart).
+    threats_detected includes all incidents ever stored in the database.
+    """
+    db_counts = mon._get_event_counts_from_db()
+    return {
+        "monitoring": True,
+        "uptime": mon.state.uptime,
+        "events_received": mon.state.events_received,
+        "events_processed": mon.state.events_processed,
+        "threats_detected": db_counts["threats"],
+        "last_event": mon.state.last_event_at,
+        "websocket_connections": len(mon.manager._connections),
+        "llm_backend": llm_mode(),
+    }
 
+
+# ── Security Event Collector ───────────────────────────────────────────────────
+@app.post("/api/events", tags=["Monitoring"], status_code=202)
+async def receive_event(event: IncomingEvent):
+    """
+    Accept a security event from any connected source.
+    The event is immediately persisted and queued for async AI analysis.
+    Returns the event_id so the caller can track state via WebSocket.
+    """
+    event_dict = event.model_dump(exclude_none=False)
+    event_id = await mon.collect_event(event_dict)
+    return {
+        "accepted": True,
+        "event_id": event_id,
+        "message": "Event received and queued for analysis.",
+    }
+
+
+@app.post("/api/events/test", tags=["Monitoring"], status_code=202)
+async def generate_test_events(request: GenerateTestEventsRequest):
+    """
+    Generate controlled test/demo security events for development and demonstration.
+    These events are clearly marked _test=True and do NOT represent real attacks.
+    """
+    event_ids = []
+    for _ in range(request.count):
+        event = mon.get_test_event()
+        event_id = await mon.collect_event(event)
+        event_ids.append(event_id)
+    return {
+        "generated": len(event_ids),
+        "event_ids": event_ids,
+        "note": "These are test/demo events generated for development purposes only.",
+    }
+
+
+# ── WebSocket real-time stream ─────────────────────────────────────────────────
+@app.websocket("/ws/events")
+async def websocket_events(websocket: WebSocket):
+    """
+    Real-time event state stream.
+    Every state transition (RECEIVED → ANALYZING → … → COMPLETED) is pushed here.
+    """
+    await mon.manager.connect(websocket)
+    # Send current monitoring state on connect so the client has immediate context
+    try:
+        await websocket.send_text(
+            __import__("json").dumps({
+                "type": "connected",
+                "monitoring_status": {
+                    "events_received": mon.state.events_received,
+                    "events_processed": mon.state.events_processed,
+                    "threats_detected": mon.state.threats_detected,
+                    "uptime": mon.state.uptime,
+                },
+            })
+        )
+        while True:
+            # Keep the connection alive; client can send pings
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        mon.manager.disconnect(websocket)
+    except Exception:
+        try:
+            mon.manager.disconnect(websocket)
+        except ValueError:
+            pass
+
+
+# ── Incidents ──────────────────────────────────────────────────────────────────
 @app.get("/api/incidents", tags=["Incidents"])
 def get_incidents():
     return orchestrator.list_incidents()
@@ -93,7 +221,7 @@ def get_incident(incident_id: str):
 
 @app.post("/api/analyze", tags=["Incidents"])
 def analyze_event(request: AnalyzeRequest):
-    """Run the full AI pipeline on a security event."""
+    """Run the full AI pipeline synchronously on a security event."""
     event_dict = request.event.model_dump()
     if not event_dict.get("timestamp"):
         event_dict["timestamp"] = datetime.utcnow().isoformat()
@@ -106,7 +234,6 @@ def analyze_event(request: AnalyzeRequest):
 
 @app.post("/api/incidents/{incident_id}/approve", tags=["Incidents"])
 def approve_incident(incident_id: str, request: ApprovalRequest):
-    """Human approves an incident response."""
     incident = orchestrator.get_incident(incident_id)
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
@@ -117,7 +244,6 @@ def approve_incident(incident_id: str, request: ApprovalRequest):
 
 @app.post("/api/incidents/{incident_id}/reject", tags=["Incidents"])
 def reject_incident(incident_id: str, request: ApprovalRequest):
-    """Human rejects an incident response."""
     incident = orchestrator.get_incident(incident_id)
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
@@ -126,8 +252,7 @@ def reject_incident(incident_id: str, request: ApprovalRequest):
     return orchestrator.reject_incident(incident_id, request.notes or "")
 
 
-# ── Agents ────────────────────────────────────────────────────────────────────
-
+# ── Agents ─────────────────────────────────────────────────────────────────────
 @app.get("/api/agents/status", tags=["Agents"])
 def agents_status():
     mode = llm_mode()
@@ -161,11 +286,10 @@ def agents_status():
     }
 
 
-# ── Demo ──────────────────────────────────────────────────────────────────────
-
+# ── Demo ───────────────────────────────────────────────────────────────────────
 @app.post("/api/demo/run", tags=["Demo"])
 def run_demo():
-    """Run the built-in demo scenario: Suspicious Login Detected."""
+    """Run the built-in demo scenario synchronously (existing dashboard button)."""
     event = {**_DEMO_EVENT_TEMPLATE, "timestamp": datetime.utcnow().isoformat()}
     try:
         incident = orchestrator.run_pipeline(event)
@@ -177,11 +301,9 @@ def run_demo():
     }
 
 
-# ── Reports ───────────────────────────────────────────────────────────────────
-
+# ── Reports ────────────────────────────────────────────────────────────────────
 @app.post("/api/reports/generate", tags=["Reports"])
 def create_report(request: ReportRequest):
-    """Generate an audit/summary report."""
     return generate_report(
         incident_id=request.incident_id if not request.include_all else None
     )
