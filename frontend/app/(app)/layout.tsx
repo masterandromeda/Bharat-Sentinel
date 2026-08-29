@@ -2,9 +2,11 @@
 import Sidebar from '@/components/Sidebar';
 import LiveHeader from '@/components/LiveHeader';
 import CyberBackground from '@/components/CyberBackground';
+import AuthGuard from '@/components/AuthGuard';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
+    <AuthGuard>
     <div style={{ display: 'flex', minHeight: '100vh', position: 'relative' }}>
       {/* Animated cybersecurity background — behind everything */}
       <CyberBackground />
@@ -56,5 +58,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </div>
+    </AuthGuard>
   );
 }

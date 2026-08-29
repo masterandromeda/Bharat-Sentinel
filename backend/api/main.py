@@ -17,6 +17,7 @@ from backend.orchestrator import orchestrator
 from backend.services.incident_service import generate_report
 from backend.services.ai_service import llm_mode
 from backend.services import monitoring as mon
+from backend.auth.auth import router as auth_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -80,6 +81,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Auth router ────────────────────────────────────────────────────────────────
+app.include_router(auth_router)
 
 
 # ── Pydantic models for new endpoints ─────────────────────────────────────────

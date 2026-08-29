@@ -15,6 +15,15 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            hashed_password TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    """)
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS incidents (
             id TEXT PRIMARY KEY,
             threat_type TEXT,

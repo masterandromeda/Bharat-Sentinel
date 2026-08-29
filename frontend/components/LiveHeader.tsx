@@ -125,20 +125,22 @@ export default function LiveHeader() {
         </div>
       </div>
 
-      {/* ── CENTER: SOC Title ── */}
+      {/* ── CENTER: BharatSentinel Brand ── */}
       <div style={{ flex: 1, textAlign: 'center' }}>
         <div style={{
-          fontSize: 18, fontWeight: 800, color: '#06b6d4',
-          letterSpacing: '0.12em', textTransform: 'uppercase',
-          textShadow: '0 0 24px rgba(6,182,212,0.35)',
+          fontSize: 22, fontWeight: 800, color: '#f0f6ff',
+          letterSpacing: '-0.01em', lineHeight: 1.1,
         }}>
-          Security Operations Center
+          BharatSentinel
         </div>
-        <div style={{ fontSize: 10, color: 'rgba(6,182,212,0.5)', letterSpacing: '0.1em', marginTop: 2 }}>
-          AI-Powered • Real-time • 24/7 Monitoring
+        <div style={{
+          fontSize: 9.5, fontWeight: 600, color: '#3b82f6',
+          letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 3,
+        }}>
+          AI-Native Security Platform
         </div>
         {/* Status pills row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 5 }}>
           <span style={{ fontSize: 9, color: '#3d5575', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
             BACKEND
           </span>
@@ -152,7 +154,7 @@ export default function LiveHeader() {
           </span>
           <span style={{ width: 1, height: 10, background: 'rgba(30,50,90,0.8)', margin: '0 2px' }} />
           <span style={{ fontSize: 9, color: '#3d5575', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-            WS CONNECTION
+            WS
           </span>
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 3,

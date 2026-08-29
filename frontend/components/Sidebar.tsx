@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useWebSocket } from '@/lib/useWebSocket';
 import { useMonitoring } from '@/lib/useMonitoring';
+import { useAuth } from '@/lib/AuthContext';
 
 interface NavItem {
   href: string;
@@ -120,22 +121,23 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { connected } = useWebSocket();
   const { backendOnline, status } = useMonitoring();
+  const { user, logout } = useAuth();
 
   return (
     <aside
       className="fixed left-0 top-0 h-full flex flex-col z-50"
       style={{ width: 220, background: 'rgba(5,8,18,0.97)', borderRight: '1px solid rgba(30,50,90,0.9)' }}
     >
-      {/* Brand */}
-      <div style={{ padding: '16px 16px 14px', borderBottom: '1px solid rgba(30,50,90,0.7)', flexShrink: 0 }}>
+      {/* Brand — logo only, no duplicate text (brand shown in header center) */}
+      <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid rgba(30,50,90,0.7)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <ShieldLogo />
           <div>
-            <p style={{ fontSize: 14, fontWeight: 800, color: '#f0f6ff', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
+            <p style={{ fontSize: 13, fontWeight: 800, color: '#f0f6ff', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
               BharatSentinel
             </p>
-            <p style={{ fontSize: 8.5, fontWeight: 600, color: '#1d4ed8', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 2 }}>
-              AI-Native Security Platform
+            <p style={{ fontSize: 8, fontWeight: 600, color: '#334d70', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 2 }}>
+              Security Platform
             </p>
           </div>
         </div>
@@ -205,6 +207,47 @@ export default function Sidebar() {
             {backendOnline ? 'All systems operational' : 'Backend offline'}
           </span>
         </div>
+
+        {/* Logged-in user + logout */}
+        {user && (
+          <div style={{
+            marginTop: 8, padding: '8px 10px',
+            background: 'rgba(255,255,255,0.02)',
+            border: '1px solid rgba(30,50,90,0.5)',
+            borderRadius: 7,
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <div style={{
+              width: 26, height: 26, borderRadius: 6,
+              background: 'linear-gradient(135deg, #1d4ed8, #6d28d9)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, fontSize: 11, fontWeight: 700, color: '#fff',
+            }}>
+              {user.email[0].toUpperCase()}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 600, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user.email}
+              </div>
+              <div style={{ fontSize: 8.5, color: '#3d5575', marginTop: 1 }}>Authenticated</div>
+            </div>
+            <button
+              onClick={() => logout()}
+              title="Logout"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: '#3d5575', fontSize: 12, padding: '2px 4px',
+                flexShrink: 0, lineHeight: 1,
+                transition: 'color 0.12s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#3d5575')}
+            >
+              ⏻
+            </button>
+          </div>
+        )}
+
         <p style={{ fontSize: 8.5, color: '#1a2840', textAlign: 'center', marginTop: 6, letterSpacing: '0.04em' }}>
           BharatSentinel™ 2025
         </p>
