@@ -1,6 +1,6 @@
 import json
 import logging
-from backend.services.ai_service import call_llm
+from backend.services.ai_service import call_llm, _rule_based_risk
 
 logger = logging.getLogger(__name__)
 
@@ -20,16 +20,22 @@ Rules:
 
 
 def run(threat_result: dict, investigation_result: dict) -> dict:
-    """
-    Run risk assessment via Azure OpenAI.
-    Raises RuntimeError if credentials are not configured or the call fails.
-    """
     user_prompt = (
         "Threat Detection Result:\n" + json.dumps(threat_result, indent=2)
         + "\n\nInvestigation Result:\n" + json.dumps(investigation_result, indent=2)
         + "\n\nAssess the risk and return the JSON assessment."
     )
     result = call_llm(SYSTEM_PROMPT, user_prompt)
+    # Ensure required fields — fallback if LLM/parsing produced empty/zero result
+    if not result.get("risk_score") and result.get("risk_score") != 0:
+        result = _rule_based_risk(threat_result, investigation_result)
+    elif result.get("risk_score") == 0:
+        # A zero score from fallback JSON parsing issue — recalculate
+        recalc = _rule_based_risk(threat_result, investigation_result)
+        if not result.get("risk_level") or not result.get("business_impact"):
+            result = recalc
+        else:
+            result["risk_score"] = recalc["risk_score"]
     logger.info(
         f"[RiskAgent] score={result.get('risk_score')}  level={result.get('risk_level')}"
     )

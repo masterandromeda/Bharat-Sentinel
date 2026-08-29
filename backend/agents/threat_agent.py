@@ -1,6 +1,6 @@
 import json
 import logging
-from backend.services.ai_service import call_llm
+from backend.services.ai_service import call_llm, _rule_based_threat
 
 logger = logging.getLogger(__name__)
 
@@ -22,15 +22,14 @@ Rules:
 
 
 def run(event: dict) -> dict:
-    """
-    Run threat detection via Azure OpenAI.
-    Raises RuntimeError if credentials are not configured or the call fails.
-    """
     user_prompt = (
         "Analyze this security event and return the JSON assessment:\n"
         + json.dumps(event, indent=2)
     )
     result = call_llm(SYSTEM_PROMPT, user_prompt)
+    # Ensure required fields are present (fallback safety)
+    if "threat_type" not in result or not result.get("threat_type"):
+        result = _rule_based_threat(event)
     logger.info(
         f"[ThreatAgent] type={result.get('threat_type')}  "
         f"severity={result.get('severity')}  conf={result.get('confidence')}"

@@ -1,6 +1,6 @@
 import json
 import logging
-from backend.services.ai_service import call_llm
+from backend.services.ai_service import call_llm, _rule_based_investigation
 
 logger = logging.getLogger(__name__)
 
@@ -21,16 +21,15 @@ Rules:
 
 
 def run(event: dict, threat_result: dict) -> dict:
-    """
-    Run investigation via Azure OpenAI.
-    Raises RuntimeError if credentials are not configured or the call fails.
-    """
     user_prompt = (
         "Security Event:\n" + json.dumps(event, indent=2)
         + "\n\nThreat Detection Result:\n" + json.dumps(threat_result, indent=2)
         + "\n\nInvestigate and return the JSON assessment."
     )
     result = call_llm(SYSTEM_PROMPT, user_prompt)
+    # Ensure required fields — fallback if LLM/parsing produced empty result
+    if not result.get("incident_summary"):
+        result = _rule_based_investigation(event, threat_result)
     logger.info(
         f"[InvestigationAgent] summary_len={len(result.get('incident_summary', ''))}  "
         f"evidence_count={len(result.get('evidence', []))}"
