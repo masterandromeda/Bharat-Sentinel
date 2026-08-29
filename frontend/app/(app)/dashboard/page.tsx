@@ -264,7 +264,7 @@ export default function DashboardPage() {
       setAgents(agRes.data);
       setLoadError('');
     } catch {
-      setLoadError('Cannot reach backend on port 8080. Start the API server.');
+      setLoadError('Cannot reach backend on port 8081. Start the API server.');
     }
   }, []);
 

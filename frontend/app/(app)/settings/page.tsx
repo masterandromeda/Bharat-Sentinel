@@ -195,8 +195,8 @@ export default function SettingsPage() {
         </h2>
         <div style={{ fontSize: 12 }}>
           {[
-            { label: 'Backend URL',    value: 'http://localhost:8080', code: true },
-            { label: 'WebSocket',      value: 'ws://localhost:8080/ws/events', code: true },
+            { label: 'Backend URL',    value: 'http://localhost:8081', code: true },
+            { label: 'WebSocket',      value: 'ws://localhost:8081/ws/events', code: true },
             { label: 'AI Engine',      value: 'AZURE_OPENAI_API_KEY in backend .env', code: false },
             { label: 'Notion',         value: 'NOTION_API_KEY + NOTION_DATABASE_ID in backend .env', code: false },
           ].map(row => (

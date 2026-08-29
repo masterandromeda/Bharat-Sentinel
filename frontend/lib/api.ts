@@ -50,11 +50,11 @@ export function getWsUrl(): string {
   if (typeof window !== 'undefined') {
     const env = process.env.NEXT_PUBLIC_WS_URL;
     if (env) return env;
-    // Default: same host, port 8080 (dev backend)
+    // Default: same host, port 8081 (dev backend)
     const host = window.location.hostname;
-    return `ws://${host}:8080/ws/events`;
+    return `ws://${host}:8081/ws/events`;
   }
-  return 'ws://localhost:8080/ws/events';
+  return 'ws://localhost:8081/ws/events';
 }
 
 export const getIncidents = () => api.get<Incident[]>('/api/incidents');
