@@ -2,17 +2,17 @@
 BharatSentinel — Authentication module
 Provides: user registration, login (JWT), logout (client-side token drop),
           current-user lookup, and change-password.
-Uses: passlib[bcrypt] for password hashing, python-jose for JWT.
+Uses: bcrypt directly for password hashing, python-jose for JWT.
 """
 import os
 import uuid
+import bcrypt as _bcrypt
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel, Field
 
 from backend.database.database import get_connection
@@ -22,7 +22,6 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "bharat-sentinel-secret-change-in-produ
 ALGORITHM  = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))  # 24h default
 
-pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
@@ -53,11 +52,14 @@ class UserResponse(BaseModel):
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def _hash_password(plain: str) -> str:
-    return pwd_ctx.hash(plain)
+    return _bcrypt.hashpw(plain.encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
 
 
 def _verify_password(plain: str, hashed: str) -> bool:
-    return pwd_ctx.verify(plain, hashed)
+    try:
+        return _bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    except Exception:
+        return False
 
 
 def _create_token(email: str) -> str:
