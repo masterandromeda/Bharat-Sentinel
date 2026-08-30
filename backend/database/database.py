@@ -1,8 +1,13 @@
 import sqlite3
 import os
-from pathlib import Path
+import uuid
+from datetime import datetime
 
 DB_PATH = os.getenv("DB_PATH", "bharat_sentinel.db")
+
+# Demo account — created automatically on first startup
+DEMO_EMAIL    = "demo@bharatsentinel.in"
+DEMO_PASSWORD = "Demo@2026"
 
 
 def get_connection():
@@ -58,4 +63,33 @@ def init_db():
         )
     """)
     conn.commit()
+
+    # Seed demo account if it doesn't exist yet
+    _seed_demo_user(conn)
+
     conn.close()
+
+
+def _seed_demo_user(conn):
+    """Insert the demo account on first run. Safe to call every startup — skips if exists."""
+    existing = conn.execute(
+        "SELECT id FROM users WHERE email = ?", (DEMO_EMAIL,)
+    ).fetchone()
+    if existing:
+        return
+
+    try:
+        import bcrypt as _bcrypt
+        hashed = _bcrypt.hashpw(
+            DEMO_PASSWORD.encode("utf-8"), _bcrypt.gensalt()
+        ).decode("utf-8")
+    except ImportError:
+        # bcrypt not available — skip seeding (user can register manually)
+        return
+
+    now = datetime.utcnow().isoformat()
+    conn.execute(
+        "INSERT INTO users (id, email, hashed_password, created_at, updated_at) VALUES (?,?,?,?,?)",
+        (str(uuid.uuid4()), DEMO_EMAIL, hashed, now, now),
+    )
+    conn.commit()

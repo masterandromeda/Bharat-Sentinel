@@ -264,8 +264,37 @@ export default function LoginPage() {
           </form>
         </div>
 
+        {/* Demo credentials hint */}
+        <div style={{
+          marginTop: 16,
+          padding: '10px 14px',
+          borderRadius: 9,
+          background: 'rgba(37,99,235,0.06)',
+          border: '1px solid rgba(37,99,235,0.18)',
+          textAlign: 'center',
+        }}>
+          <p style={{ fontSize: 10, color: '#4a6080', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, fontWeight: 700 }}>
+            Demo Credentials
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 20 }}>
+            <div>
+              <span style={{ fontSize: 9.5, color: '#3d5575' }}>Email</span>
+              <p style={{ fontSize: 12, color: '#93c5fd', fontWeight: 600, fontFamily: 'monospace', marginTop: 2 }}>
+                demo@bharatsentinel.in
+              </p>
+            </div>
+            <div style={{ width: 1, background: 'rgba(40,60,110,0.4)' }} />
+            <div>
+              <span style={{ fontSize: 9.5, color: '#3d5575' }}>Password</span>
+              <p style={{ fontSize: 12, color: '#93c5fd', fontWeight: 600, fontFamily: 'monospace', marginTop: 2 }}>
+                Demo@2026
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Footer */}
-        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 10.5, color: '#1e3260', letterSpacing: '0.04em' }}>
+        <p style={{ textAlign: 'center', marginTop: 16, fontSize: 10.5, color: '#1e3260', letterSpacing: '0.04em' }}>
           BharatSentinel™ · AI Agents. Human Control. Continuous Security.
         </p>
       </div>
